@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Jumpy Jumperson</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Orbitron', sans-serif;
+            background-color: #050505;
+            overflow: hidden;
+            touch-action: none; /* Prevent browser zooming/scrolling */
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: radial-gradient(circle at center, #1a1a1a 0%, #000000 100%);
+        }
+
+        canvas {
+            box-shadow: 0 0 50px rgba(0, 255, 255, 0.1);
+            border-top: 2px solid #333;
+            border-bottom: 2px solid #333;
+        }
+
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+        }
+
+        .hud-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            width: 100%;
+            max-width: 900px;
+            margin: 0 auto;
+            pointer-events: auto; /* Allow clicking the pause button */
+        }
+
+        .score-box {
+            color: #fff;
+            text-shadow: 0 0 10px #0ff;
+            font-size: 1.2rem;
+        }
+
+        .pause-btn {
+            background: transparent;
+            border: 2px solid #00f2ff;
+            color: #00f2ff;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            clip-path: polygon(20% 0, 100% 0, 100% 80%, 80% 100%, 0 100%, 0 20%);
+            box-shadow: 0 0 10px rgba(0, 242, 255, 0.2);
+            padding: 0; /* Reset default button padding */
+            margin-top: 0;
+        }
+
+        .pause-btn:hover {
+            background: rgba(0, 242, 255, 0.2);
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.6);
+            transform: scale(1.1);
+        }
+
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            pointer-events: auto;
+            z-index: 10;
+            backdrop-filter: blur(5px);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        button.main-btn {
+            /* Updated to match Title Gradient */
+            background: linear-gradient(to right, #00f2ff, #ff00ff);
+            border: none;
+            padding: 15px 40px;
+            color: #000;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: bold;
+            font-size: 1.5rem;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            clip-path: polygon(10% 0, 100% 0, 100% 80%, 90% 100%, 0 100%, 0 20%);
+            transition: transform 0.1s, filter 0.2s;
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.4);
+            margin-top: 20px;
+            animation: pulseBtn 2s infinite;
+        }
+
+        button.main-btn:active {
+            transform: scale(0.95);
+        }
+
+        button.main-btn:hover {
+            filter: brightness(1.2);
+            animation: none; /* Stop pulsing on hover */
+        }
+
+        @keyframes pulseBtn {
+            0% { box-shadow: 0 0 20px rgba(0, 242, 255, 0.4); transform: scale(1); }
+            50% { box-shadow: 0 0 40px rgba(0, 242, 255, 0.8); transform: scale(1.05); }
+            100% { box-shadow: 0 0 20px rgba(0, 242, 255, 0.4); transform: scale(1); }
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            background: linear-gradient(to right, #00f2ff, #ff00ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+        }
+
+        p {
+            color: #ccc;
+            margin-bottom: 20px;
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        .level-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 5rem;
+            color: rgba(255, 255, 255, 0.1);
+            font-weight: bold;
+            pointer-events: none;
+            z-index: 0;
+            transition: color 0.5s;
+        }
+
+        .level-flash {
+            animation: flashLevel 1.5s ease-out forwards;
+        }
+
+        @keyframes flashLevel {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; color: #fff; }
+            50% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; color: #fff; text-shadow: 0 0 30px currentColor; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 0; color: rgba(255,255,255,0.1); }
+        }
+
+        /* Mobile controls hint */
+        .mobile-hint {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.9rem;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+    
+    <div class="level-indicator" id="bgLevelText">LEVEL 1</div>
+
+    <div class="ui-layer">
+        <div class="hud-top">
+            <div class="score-box">
+                <div id="scoreDisplay">SCORE: 0</div>
+                <div id="levelDisplay" style="color: #00f2ff; font-size: 0.9em;">LEVEL 1</div>
+            </div>
+            <button id="pauseBtn" class="pause-btn" title="Pause Game">
+                ||
+            </button>
+        </div>
+        <div class="mobile-hint" id="mobileHint">Tap screen or Spacebar to Jump (Tap again in air to Double Jump)</div>
+    </div>
+
+    <!-- Start Screen -->
+    <div id="startScreen" class="overlay">
+        <h1>JUMPY JUMPERSON</h1>
+        <p>Avoid the obstacles.<br>Survive to reach Level 10.</p>
+        <button id="startBtn" class="main-btn">START RUN</button>
+    </div>
+
+    <!-- Pause Screen -->
+    <div id="pauseScreen" class="overlay hidden">
+        <h1 style="font-size: 2.5rem; letter-spacing: 5px;">PAUSED</h1>
+        <button id="resumeBtn" class="main-btn" style="margin-bottom: 15px;">RESUME</button>
+        <button id="quitBtn" class="main-btn" style="background: linear-gradient(45deg, #ff0055, #ff0000); font-size: 1rem; padding: 10px 30px;">RESTART</button>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="gameOverScreen" class="overlay hidden">
+        <h1 style="background: linear-gradient(to right, #ff0000, #ff8800); -webkit-background-clip: text;">CRASHED</h1>
+        <p>Final Score: <span id="finalScore" style="color: #fff; font-weight: bold;">0</span></p>
+        <p>Reached: <span id="finalLevel" style="color: #00f2ff;">Level 1</span></p>
+        <button id="restartBtn" class="main-btn">TRY AGAIN</button>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreDisplay = document.getElementById('scoreDisplay');
+    const levelDisplay = document.getElementById('levelDisplay');
+    const bgLevelText = document.getElementById('bgLevelText');
+    const startScreen = document.getElementById('startScreen');
+    const pauseScreen = document.getElementById('pauseScreen');
+    const gameOverScreen = document.getElementById('gameOverScreen');
+    const finalScoreSpan = document.getElementById('finalScore');
+    const finalLevelSpan = document.getElementById('finalLevel');
+    const mobileHint = document.getElementById('mobileHint');
+    const pauseBtnIcon = document.getElementById('pauseBtn');
+
+    // --- Audio Synthesis (No external assets) ---
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    function playSound(type) {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        // Calculate pitch multiplier: 10% increase per level (1.1 ^ (level - 1))
+        const pitchMultiplier = Math.pow(1.1, Math.max(0, level - 1));
+
+        if (type === 'jump') {
+            osc.type = 'sine';
+            // Apply pitch multiplier to base frequencies (400Hz start, 600Hz end)
+            osc.frequency.setValueAtTime(400 * pitchMultiplier, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(600 * pitchMultiplier, audioCtx.currentTime + 0.1);
+            
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.1);
+        } else if (type === 'crash') {
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(100, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.3);
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.3);
+        } else if (type === 'levelup') {
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+            osc.frequency.setValueAtTime(600, audioCtx.currentTime + 0.1);
+            osc.frequency.setValueAtTime(800, audioCtx.currentTime + 0.2);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.4);
+        }
+    }
+
+    // --- Game Configuration ---
+    let gameSpeed = 5;
+    let score = 0;
+    let level = 1;
+    let frame = 0;
+    let isGameOver = false;
+    let isPlaying = false;
+    let isPaused = false;
+    let animationId;
+
+    // --- Level Configs ---
+    const levelConfigs = {
+        1: { speed: 6,  spawnRate: 100, maxObstacles: 1, color: '#00f2ff', name: "Level 1" },
+        2: { speed: 7,  spawnRate: 90,  maxObstacles: 2, color: '#00ff00', name: "Level 2" },
+        3: { speed: 8,  spawnRate: 80,  maxObstacles: 3, color: '#ffff00', name: "Level 3" },
+        4: { speed: 9,  spawnRate: 70,  maxObstacles: 4, color: '#ff00ff', name: "Level 4" }, // High density
+        5: { speed: 11, spawnRate: 60,  maxObstacles: 5, color: '#ff0000', name: "Level 5" }, // Maximum Chaos
+        6: { speed: 12, spawnRate: 55,  maxObstacles: 5, color: '#ff8800', name: "Level 6" }, // Orange Warning
+        7: { speed: 13, spawnRate: 50,  maxObstacles: 6, color: '#ff0099', name: "Level 7" }, // Magenta Madness
+        8: { speed: 14, spawnRate: 45,  maxObstacles: 6, color: '#00ffaa', name: "Level 8" }, // Spring Green Speed
+        9: { speed: 15, spawnRate: 40,  maxObstacles: 7, color: '#9900ff', name: "Level 9" }, // Purple Haze
+        10: { speed: 17, spawnRate: 35, maxObstacles: 8, color: '#ffffff', name: "LEVEL 10" } // Whiteout
+    };
+
+    // --- Resize Logic ---
+    function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        // Floor position is relative to height
+        groundY = canvas.height * 0.75;
+    }
+    window.addEventListener('resize', resize);
+
+    // --- Game Objects ---
+    let groundY;
+    
+    const player = {
+        x: 100,
+        y: 0,
+        width: 40,
+        height: 40,
+        dy: 0,
+        jumpForce: 17, // Increased from 13
+        doubleJumpForce: 13, // Increased from 10
+        gravity: 0.6,
+        grounded: false,
+        canDoubleJump: false,
+        color: '#fff',
+        rotation: 0,
+        draw: function() {
+            ctx.save();
+            ctx.translate(this.x + this.width/2, this.y + this.height/2);
+            // Spin when jumping
+            if (!this.grounded) {
+                this.rotation += 0.15;
+            } else {
+                this.rotation = 0;
+            }
+            ctx.rotate(this.rotation);
+            
+            // Neon Glow
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = this.color;
+            ctx.fillStyle = this.color;
+            ctx.fillRect(-this.width/2, -this.height/2, this.width, this.height);
+            
+            // Inner core
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#000';
+            ctx.fillRect(-this.width/2 + 4, -this.height/2 + 4, this.width - 8, this.height - 8);
+            
+            ctx.restore();
+        },
+        update: function() {
+            // Physics
+            this.y += this.dy;
+            
+            if (this.y + this.height < groundY) {
+                this.dy += this.gravity;
+                this.grounded = false;
+            } else {
+                this.dy = 0;
+                this.grounded = true;
+                this.canDoubleJump = true; // Reset double jump on land
+                this.y = groundY - this.height;
+            }
+        },
+        jump: function() {
+            if (this.grounded) {
+                // First Jump
+                this.dy = -this.jumpForce;
+                this.grounded = false;
+                this.canDoubleJump = true;
+                playSound('jump');
+                createParticles(this.x + this.width/2, this.y + this.height, 10, '#fff');
+            } else if (this.canDoubleJump) {
+                // Double Jump (Air Jump)
+                this.dy = -this.doubleJumpForce;
+                this.canDoubleJump = false; // Consume the charge
+                playSound('jump');
+                
+                // Spawn particles at feet in the air
+                createParticles(this.x + this.width/2, this.y + this.height, 8, '#00f2ff'); 
+                
+                // Reset rotation to make the second jump feel like a fresh impulse
+                this.rotation = 0; 
+            }
+        }
+    };
+
+    let obstacles = [];
+    let particles = [];
+    let bgStars = [];
+
+    class Obstacle {
+        constructor() {
+            this.width = 30 + Math.random() * 20;
+            this.height = 40 + Math.random() * 30;
+            this.x = canvas.width + Math.random() * 200; // Start off screen
+            this.y = groundY - this.height;
+            this.color = levelConfigs[Math.min(level, 10)].color;
+            this.markedForDeletion = false;
+        }
+
+        update() {
+            this.x -= gameSpeed;
+            if (this.x + this.width < 0) this.markedForDeletion = true;
+        }
+
+        draw() {
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = this.color;
+            ctx.fillStyle = this.color;
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+            ctx.shadowBlur = 0;
+            
+            // Detail
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.fillRect(this.x + 5, this.y + 5, this.width - 10, this.height - 10);
+        }
+    }
+
+    class Particle {
+        constructor(x, y, color) {
+            this.x = x;
+            this.y = y;
+            this.size = Math.random() * 5 + 2;
+            this.speedX = Math.random() * 4 - 2;
+            this.speedY = Math.random() * 4 - 2;
+            this.color = color;
+            this.life = 1; // opacity
+        }
+        update() {
+            this.x += this.speedX;
+            this.y += this.speedY;
+            this.life -= 0.05;
+        }
+        draw() {
+            ctx.globalAlpha = this.life;
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+        }
+    }
+
+    function createParticles(x, y, count, color) {
+        for (let i = 0; i < count; i++) {
+            particles.push(new Particle(x, y, color));
+        }
+    }
+
+    // --- Background Stars ---
+    function initStars() {
+        bgStars = [];
+        for(let i=0; i<50; i++) {
+            bgStars.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height * 0.8, // Only in sky
+                size: Math.random() * 2,
+                speed: Math.random() * 0.5 + 0.1
+            });
+        }
+    }
+
+    function drawBackground() {
+        ctx.fillStyle = '#fff';
+        bgStars.forEach(star => {
+            star.x -= star.speed * (gameSpeed * 0.1); // Parallax
+            if (star.x < 0) star.x = canvas.width;
+            ctx.globalAlpha = Math.random() * 0.5 + 0.3;
+            ctx.beginPath();
+            ctx.arc(star.x, star.y, star.size, 0, Math.PI*2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+        });
+
+        // Floor Line
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = levelConfigs[Math.min(level, 10)].color;
+        ctx.strokeStyle = levelConfigs[Math.min(level, 10)].color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, groundY);
+        ctx.lineTo(canvas.width, groundY);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        // Grid effect below floor
+        ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+        ctx.lineWidth = 1;
+        let perspectiveOffset = (frame * gameSpeed) % 50;
+        
+        for(let i = 0; i < canvas.width; i+=50) {
+            // Vertical lines moving left
+            let xPos = i - perspectiveOffset;
+            if(xPos < 0) xPos += canvas.width;
+            
+            ctx.beginPath();
+            ctx.moveTo(xPos, groundY);
+            ctx.lineTo(xPos - 100, canvas.height); // Slanted for 3d effect
+            ctx.stroke();
+        }
+    }
+
+    // --- Game Logic ---
+
+    function spawnObstacles() {
+        const config = levelConfigs[Math.min(level, 10)];
+        
+        if (frame % config.spawnRate === 0) {
+            let clusterSize = 1;
+            
+            if (level >= 4) {
+                 if(Math.random() > 0.5) clusterSize = Math.floor(Math.random() * (Math.min(level, 6) - 1)) + 1;
+            }
+            clusterSize = Math.min(clusterSize, config.maxObstacles);
+
+            for(let i=0; i<clusterSize; i++) {
+                setTimeout(() => {
+                    if (!isGameOver && !isPaused) obstacles.push(new Obstacle());
+                }, i * 300);
+            }
+        }
+    }
+
+    function checkCollision(rect1, rect2) {
+        return (
+            rect1.x < rect2.x + rect2.width &&
+            rect1.x + rect1.width > rect2.x &&
+            rect1.y < rect2.y + rect2.height &&
+            rect1.y + rect1.height > rect2.y
+        );
+    }
+
+    function updateLevel() {
+        const newLevel = Math.floor(score / 500) + 1;
+        
+        if (newLevel > level && newLevel <= 10) {
+            level = newLevel;
+            playSound('levelup');
+            
+            levelDisplay.textContent = levelConfigs[level].name;
+            levelDisplay.style.color = levelConfigs[level].color;
+            bgLevelText.textContent = `LEVEL ${level}`;
+            bgLevelText.style.color = levelConfigs[level].color;
+            
+            bgLevelText.classList.remove('level-flash');
+            void bgLevelText.offsetWidth; 
+            bgLevelText.classList.add('level-flash');
+            
+            gameSpeed = levelConfigs[level].speed;
+        } else if (newLevel > 10 && level !== 10) {
+            level = 10; 
+        }
+    }
+
+    function gameLoop() {
+        if (!isPlaying || isPaused) return;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Update Frame
+        frame++;
+        score++;
+        scoreDisplay.textContent = `SCORE: ${score}`;
+
+        // Logic
+        updateLevel();
+        drawBackground();
+        spawnObstacles();
+
+        // Player
+        player.update();
+        player.draw();
+
+        // Obstacles
+        obstacles.forEach((obs, index) => {
+            obs.update();
+            obs.draw();
+            
+            if (checkCollision(player, obs)) {
+                gameOver();
+            }
+
+            if (obs.markedForDeletion) {
+                obstacles.splice(index, 1);
+            }
+        });
+
+        // Particles
+        particles.forEach((p, index) => {
+            p.update();
+            p.draw();
+            if (p.life <= 0) particles.splice(index, 1);
+        });
+
+        if (!isGameOver) {
+            animationId = requestAnimationFrame(gameLoop);
+        }
+    }
+
+    function startGame() {
+        resize();
+        initStars();
+        
+        score = 0;
+        level = 1;
+        frame = 0;
+        gameSpeed = levelConfigs[1].speed;
+        
+        player.y = groundY - player.height;
+        player.dy = 0;
+        player.rotation = 0;
+        
+        obstacles = [];
+        particles = [];
+        isGameOver = false;
+        isPlaying = true;
+        isPaused = false;
+        
+        startScreen.classList.add('hidden');
+        gameOverScreen.classList.add('hidden');
+        pauseScreen.classList.add('hidden');
+        bgLevelText.classList.remove('level-flash');
+        
+        levelDisplay.textContent = "LEVEL 1";
+        levelDisplay.style.color = levelConfigs[1].color;
+        bgLevelText.textContent = "LEVEL 1";
+        bgLevelText.style.color = "rgba(255,255,255,0.1)";
+
+        gameLoop();
+    }
+
+    function togglePause() {
+        if (!isPlaying || isGameOver) return;
+
+        isPaused = !isPaused;
+
+        if (isPaused) {
+            cancelAnimationFrame(animationId);
+            pauseScreen.classList.remove('hidden');
+            pauseBtnIcon.innerHTML = '&#9658;'; // Play icon
+            // Suspend audio context just in case, though oscillators stop naturally
+            if (audioCtx.state === 'running') audioCtx.suspend();
+        } else {
+            pauseScreen.classList.add('hidden');
+            pauseBtnIcon.innerHTML = '||'; // Pause icon
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            gameLoop();
+        }
+    }
+
+    function gameOver() {
+        isGameOver = true;
+        isPlaying = false;
+        playSound('crash');
+        cancelAnimationFrame(animationId);
+        
+        finalScoreSpan.innerText = score;
+        finalLevelSpan.innerText = `Level ${level}`;
+        finalLevelSpan.style.color = levelConfigs[Math.min(level,10)].color;
+        
+        gameOverScreen.classList.remove('hidden');
+    }
+
+    // --- Inputs ---
+    const keys = {};
+
+    window.addEventListener('keydown', e => {
+        if (e.code === 'Space' || e.code === 'ArrowUp') {
+            if (isPlaying && !isPaused) {
+                player.jump();
+            } else if (isGameOver) {
+                startGame();
+            }
+        }
+        
+        if (e.code === 'Escape' || e.key === 'p' || e.key === 'P') {
+            togglePause();
+        }
+    });
+
+    window.addEventListener('touchstart', (e) => {
+        // Only jump if not clicking a button
+        if(e.target.tagName !== 'BUTTON') {
+             if (isPlaying && !isPaused) {
+                player.jump();
+             }
+        }
+    }, {passive: false});
+
+    document.getElementById('startBtn').addEventListener('click', startGame);
+    document.getElementById('restartBtn').addEventListener('click', startGame);
+    
+    // Pause Controls
+    document.getElementById('pauseBtn').addEventListener('click', (e) => {
+        e.stopPropagation(); // Prevent triggering jump/touch event
+        togglePause();
+    });
+    document.getElementById('resumeBtn').addEventListener('click', togglePause);
+    document.getElementById('quitBtn').addEventListener('click', startGame); // Acts as restart
+
+    // Initial Setup
+    resize();
+    initStars();
+
+</script>
+</body>
+</html>
