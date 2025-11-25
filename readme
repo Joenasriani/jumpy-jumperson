@@ -1,8 +1,4 @@
-Here’s a professional README.md tailored for your Jumpy Jumperson game along with suggestions for prompts to enhance it beyond a standard endless runner.
 
-⸻
-
-Jumpy Jumperson
 
 Jumpy Jumperson is a fast-paced, neon-styled endless runner game built with HTML, CSS, and JavaScript. Avoid obstacles, perform double jumps, and reach higher levels to achieve the best score. Fully responsive for desktop and mobile devices.
 
@@ -21,14 +17,7 @@ Features
 	•	Score and level HUD that updates in real time.
 	•	Minimal external dependencies (TailwindCSS & Google Fonts).
 
-Installation
-	1.	Clone the repository:
-
-git clone https://github.com/YourUsername/jumpy-jumperson.git
-
-
-	2.	Open index.html in your browser.
-	3.	Play on desktop (keyboard) or mobile (touch).
+>> https://joenasriani.github.io/jumpy-jumperson/
 
 Controls
 	•	Desktop
